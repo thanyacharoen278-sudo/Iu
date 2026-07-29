@@ -1,0 +1,285 @@
+-- DEKUz RPG UI SYSTEM
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local guiParent = player:WaitForChild("PlayerGui")
+
+
+------------------------------------------------
+-- SETTINGS
+------------------------------------------------
+
+local CombatEnabled = false
+local UIVisible = true
+local CombatLoop
+
+
+local AttackRemote = ReplicatedStorage:WaitForChild("AttackRequest")
+
+
+------------------------------------------------
+-- UI
+------------------------------------------------
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "DEKUzUI"
+gui.ResetOnSpawn = false
+gui.Parent = guiParent
+
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0,250,0,260)
+main.Position = UDim2.new(.5,-125,.15,0)
+main.BackgroundColor3 = Color3.fromRGB(20,20,30)
+main.Parent = gui
+
+
+local corner = Instance.new("UICorner")
+corner.Parent = main
+
+
+local stroke = Instance.new("UIStroke")
+stroke.Thickness = 3
+stroke.Parent = main
+
+
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1,0,0,35)
+title.BackgroundTransparency = 1
+title.Text = "DEKUz RPG"
+title.TextSize = 22
+title.Font = Enum.Font.GothamBold
+title.TextColor3 = Color3.new(1,1,1)
+title.Parent = main
+
+
+
+local function Button(text,y)
+
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.new(.8,0,0,32)
+	b.Position = UDim2.new(.1,0,0,y)
+	b.BackgroundColor3 = Color3.fromRGB(60,60,80)
+	b.Text = text
+	b.TextColor3 = Color3.new(1,1,1)
+	b.Font = Enum.Font.GothamBold
+	b.Parent = main
+
+	local c = Instance.new("UICorner")
+	c.Parent = b
+
+	return b
+end
+
+
+local combatBtn = Button("Combat OFF",50)
+local hideBtn = Button("Hide UI",90)
+
+
+
+------------------------------------------------
+-- STATS DISPLAY
+------------------------------------------------
+
+local statsLabel = Instance.new("TextLabel")
+
+statsLabel.Size = UDim2.new(1,0,0,90)
+statsLabel.Position = UDim2.new(0,0,0,135)
+statsLabel.BackgroundTransparency = 1
+statsLabel.TextColor3 = Color3.new(1,1,1)
+statsLabel.TextSize = 15
+statsLabel.Font = Enum.Font.GothamBold
+statsLabel.Parent = main
+
+
+
+local function UpdateStats()
+
+	local leader = player:FindFirstChild("leaderstats")
+	local stats = player:FindFirstChild("Stats")
+
+
+	if leader and stats then
+
+		local level = leader:FindFirstChild("Level")
+		local strength = stats:FindFirstChild("Strength")
+		local defense = stats:FindFirstChild("Defense")
+
+
+		if level and strength and defense then
+
+			local damage = 10 + (strength.Value * 2)
+
+
+			statsLabel.Text =
+				"Level : "..level.Value..
+				"\nStrength : "..strength.Value..
+				"\nDefense : "..defense.Value..
+				"\nDamage : "..damage
+
+		end
+
+	end
+
+end
+
+
+
+------------------------------------------------
+-- COMBAT
+------------------------------------------------
+
+local function Attack()
+
+	local stats = player:FindFirstChild("Stats")
+
+	if stats then
+
+		local strength = stats.Strength.Value
+
+		local damage = 10 + (strength * 2)
+
+		AttackRemote:FireServer(damage)
+
+	end
+
+end
+
+
+
+local function StartCombat()
+
+	if CombatLoop then return end
+
+	CombatLoop = task.spawn(function()
+
+		while CombatEnabled do
+
+			Attack()
+
+			task.wait(.5)
+
+		end
+
+	end)
+
+end
+
+
+
+local function StopCombat()
+
+	if CombatLoop then
+
+		task.cancel(CombatLoop)
+		CombatLoop = nil
+
+	end
+
+end
+
+
+
+combatBtn.MouseButton1Click:Connect(function()
+
+	CombatEnabled = not CombatEnabled
+
+
+	if CombatEnabled then
+
+		combatBtn.Text = "Combat ON"
+
+		StartCombat()
+
+	else
+
+		combatBtn.Text = "Combat OFF"
+
+		StopCombat()
+
+	end
+
+end)
+
+
+
+------------------------------------------------
+-- HIDE UI
+------------------------------------------------
+
+hideBtn.MouseButton1Click:Connect(function()
+
+	UIVisible = not UIVisible
+	main.Visible = UIVisible
+
+end)
+
+
+
+------------------------------------------------
+-- UPDATE + RAINBOW
+------------------------------------------------
+
+local hue = 0
+
+RunService.RenderStepped:Connect(function()
+
+	hue = (hue + .01)%1
+
+	local color = Color3.fromHSV(hue,1,1)
+
+	stroke.Color = color
+	title.TextColor3 = color
+
+	UpdateStats()
+
+end)
+
+
+
+------------------------------------------------
+-- DRAG
+------------------------------------------------
+
+local dragging = false
+local dragStart
+local startPos
+
+
+main.InputBegan:Connect(function(input)
+
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+
+		dragging = true
+		dragStart = input.Position
+		startPos = main.Position
+
+	end
+
+end)
+
+
+UserInputService.InputChanged:Connect(function(input)
+
+	if dragging then
+
+		local delta = input.Position - dragStart
+
+		main.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+
+	end
+
+end)
+
+
+print("✅ DEKUz RPG UI Loaded")
